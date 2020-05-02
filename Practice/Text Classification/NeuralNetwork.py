@@ -59,7 +59,7 @@ class NeuralNet:
         return exps / exps.sum(axis=0, keepdims=True)
     
     def __cross_entropy(self, A, Y):
-        return -np.mean(Y.T * np.log(A.T))
+        return -np.mean(Y.T * np.log(A.T+ 1e-8))
     
     def __initialize_parameters(self, n_x, n_y, hidden_layers):
         W = []
@@ -70,7 +70,7 @@ class NeuralNet:
         self.parameters = {}
         layers = [n_x] + list(hidden_layers) + [n_y]
         for i in range(1, self.num_layers + 1):
-            W.append(np.random.randn(layers[i], layers[i - 1]) * 0.01)
+            W.append(np.random.randn(layers[i], layers[i - 1]) / np.sqrt(layers[i - 1]))
             b.append(np.zeros((layers[i], 1)))
             
             self.VdW.append(np.zeros((layers[i], layers[i - 1])))
@@ -144,7 +144,6 @@ class NeuralNet:
     
     def __create_mini_batches(self, X, Y, batch_size):
         m = X.shape[1]
-        x_columns = X.shape[0]
         
         permutation = list(np.random.permutation(m))
         shuffled_X = X[:, permutation]        
@@ -155,14 +154,12 @@ class NeuralNet:
         n_minibatches = m // batch_size
         
         for i in range(n_minibatches): 
-            mini_batch = data[:, i * batch_size:(i + 1)*batch_size] 
-            X_mini = mini_batch[:x_columns, :] 
-            Y_mini = mini_batch[x_columns:, :]
+            X_mini = shuffled_X[:, i * batch_size:(i + 1)*batch_size] 
+            Y_mini = shuffled_Y[:, i * batch_size:(i + 1)*batch_size] 
             mini_batches.append((X_mini, Y_mini))
         if m % batch_size != 0:
-            mini_batch = data[:, (i+1) * batch_size:m] 
-            X_mini = mini_batch[:x_columns, :]
-            Y_mini = mini_batch[x_columns:, :]
+            X_mini = shuffled_X[:, (i+1) * batch_size:m] 
+            Y_mini = shuffled_Y[:, (i+1) * batch_size:m] 
             mini_batches.append((X_mini, Y_mini)) 
         return mini_batches
     
@@ -193,8 +190,6 @@ class NeuralNet:
 
             if print_cost and i % print_by == 0:
                 print("{}-th iteration: {}".format(i, cost))
-                if i > 1:
-                    print(f"Delta: {costs[-2] - costs[-1]}")
 
             if i > 1 and abs(costs[-2] - costs[-1]) < self.epsilon:
                 break
